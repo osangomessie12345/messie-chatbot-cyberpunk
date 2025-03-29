@@ -176,6 +176,16 @@
             padding: 15px;
             border-radius: 10px;
         }
- 
+
+#chatbox {
+    max-height: 400px; /* Ajuste la hauteur selon tes besoins */
+    overflow-y: auto;  /* Permet le défilement vertical */
+    padding: 10px;
+}
+.message {
+    margin-bottom: 10px;
+    word-wrap: break-word; /* Pour éviter que les messages longs ne débordent */
+}
+
 
           
