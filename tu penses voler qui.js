@@ -1,49 +1,41 @@
-       // Définition des réponses programmées
+      const API_KEY = "AIzaSyBQeZVi4QdrnGKPEfXXx1tdIqlMM8iqvZw";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+
         const programmedResponses = {
             "créateur": "Mon créateur est Messie Osango.",
             "qui es-tu": "Je suis Messie Chatbot.",
             "qui t'a créé": "Je suis conçu par Messie Osango.",
-            "qui es-tu ?":"je suis l'intelligence artificielle conçue par messie osango",
-            "qui t'a créé ?":"messie osango est mon créateur !",
-            "qui est messie osango":"messie osango est mon créateur et développeur ",
-            
+            "qui es-tu ?": "Je suis l'intelligence artificielle conçue par Messie Osango.",
+            "qui t'a créé ?": "Messie Osango est mon créateur !",
+            "qui est messie osango": "Messie Osango est mon créateur et développeur.",
         };
 
         async function sendMessage() {
-            let userInput = document.getElementById("userInput").value.trim().toLowerCase();
+            let userInput = document.getElementById("userInput").value.trim();
             if (!userInput) return;
 
             appendMessage("user", userInput);
             document.getElementById("userInput").value = "";
 
-            // Vérification des réponses programmées
-            if (programmedResponses[userInput]) {
-                appendMessage("bot", programmedResponses[userInput]);
-                saveQuestionAndResponse(userInput, programmedResponses[userInput]);
+            if (programmedResponses[userInput.toLowerCase()]) {
+                appendMessage("bot", programmedResponses[userInput.toLowerCase()]);
+                saveQuestionAndResponse(userInput, programmedResponses[userInput.toLowerCase()]);
                 return;
             }
 
-            // Si aucune réponse programmée n'est trouvée, appel de l'API
             try {
-                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                const response = await fetch(API_URL, {
                     method: "POST",
-                    headers: {
-                        "Authorization": "Bearer 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",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: "llama3-8b-8192",
-                        messages: [{ role: "user", content: userInput }],
-                        temperature: 0.7
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: userInput }] }] })
                 });
 
                 const data = await response.json();
-                const botReply = data.choices[0].message.content;
+                const botReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas compris.";
                 appendMessage("bot", botReply);
                 saveQuestionAndResponse(userInput, botReply);
             } catch (error) {
-                appendMessage("bot", "⚠️ Erreur de connexion à l'API !");
+                appendMessage("bot", "⚠️ Erreur de connexion !");
             }
         }
 
@@ -51,12 +43,12 @@
             let chatbox = document.getElementById("chatbox");
             let msgDiv = document.createElement("div");
             msgDiv.classList.add("message", sender);
-            
+
             if (sender === "bot") {
                 chatbox.appendChild(msgDiv);
-                typeMessage(msgDiv, message); // Effet de frappe progressive pour le bot
+                typeMessage(msgDiv, message);
             } else {
-                msgDiv.innerText = message;
+                msgDiv.textContent = message;
                 chatbox.appendChild(msgDiv);
             }
 
@@ -67,9 +59,9 @@
             let i = 0;
             function type() {
                 if (i < message.length) {
-                    element.innerHTML += message.charAt(i);
+                    element.textContent += message.charAt(i);
                     i++;
-                    setTimeout(type, 5); // Vitesse de frappe (30ms par lettre)
+                    setTimeout(type, 20);
                 }
             }
             type();
@@ -85,59 +77,42 @@
             let savedData = JSON.parse(localStorage.getItem("savedData")) || [];
             
             if (savedData.length === 0) {
-                Swal.fire({
-                    title: "📂 Aucune question enregistrée",
-                    text: "Il n'y a pas encore de questions enregistrées.",
-                    background: "#0d0d1a",
-                    color: "#0ff",
-                    confirmButtonText: "Fermer",
-                    confirmButtonColor: "#ff007f"
-                });
+                Swal.fire("📂 Aucune question enregistrée", "Il n'y a pas encore de questions enregistrées.", "info");
                 return;
             }
 
             let buttonsHtml = savedData.map((entry, index) => 
-                `<button id="questionBtn${index}" class="saved-question-btn" 
-                    style="background:  #8000ff; max-height: 300px; overflow-y: auto; text-align: left; padding: 10px;margin:10px;">
-                    ${entry.question.substring(0, 30)}${entry.question.length > 30 ? '...' : ''}
-                </button><br>`
+     `<button id="questionBtn${index}" class="saved-question" onclick="showResponse(${index})">${entry.question}</button>`
             ).join("");
 
             Swal.fire({
-                title: "📂 Questions enregistrées",
-                html: `<div style="max-height: 60vh; overflow-y: auto;">${buttonsHtml}</div>`,
-                background: "#0d0d1a",
-                color: "#0ff",
+                title: "QUESTION",
+                html: `<div id="savedQuestionsContainer">${buttonsHtml}</div>`,
                 showConfirmButton: false,
-                width: '700px'
-            });
-
-            savedData.forEach((entry, index) => {
-                document.getElementById(`questionBtn${index}`).addEventListener('click', function() {
-                    showResponse(entry.question, entry.response);
-                });
+                showCloseButton: true,
+                customClass: {
+                    popup: 'black-popup',
+                    title: 'white-title',
+                    htmlContainer: 'white-text'
+                }
             });
         }
 
-        function showResponse(question, response) {
+        function showResponse(index) {
+            let savedData = JSON.parse(localStorage.getItem("savedData")) || [];
+            let selectedData = savedData[index];
             Swal.fire({
-                title: question,
-                html: `<div style="
-                    max-height: 60vh;
-                    overflow-y: auto; 
-                    text-align: left; 
-                    padding: 10px;
-                    white-space: pre-wrap;
-                    font-family: monospace;
-                    background: #1a1a2e;
-                    border-radius: 5px;
-                    border: 1px solid var(--neon-cyan);
-                ">${response}</div>`,
-                background: "#0d0d1a",
-                color: "#0ff",
+                title: "QUESTION",
+                html: `<div class="response-container"><b>Question:</b> ${selectedData.question}<br><br><br>
+                <b>Réponse:</b><br>
+                <br> ${selectedData.response}</div>`,
+                showConfirmButton: true,
                 confirmButtonText: "Fermer",
-                confirmButtonColor: "#ff007f",
-                width: '300px'
+                customClass: {
+                    popup: 'black-popup',
+                    title: 'white-title',
+                    htmlContainer: 'white-text'
+                }
             });
         }
 
@@ -145,4 +120,4 @@
             if (event.key === "Enter") {
                 sendMessage();
             }
-                }
+                   }
